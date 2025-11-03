@@ -4,11 +4,12 @@ import Input from "@/components/Input";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
+import { useAuth } from "@/context/authContext";
 import { useRouter } from "expo-router";
 import * as Icons from "lucide-react-native";
 import React, { useRef, useState } from "react";
 import {
-    Alert,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,10 +26,20 @@ const Register = () => {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
+  const { signUp } = useAuth();
+
   const handleSubmit = async () => {
-    if(!emailRef.current || !passwordRef.current || !nameRef.current){
-        Alert.alert("Sign Up","Please fill all the fields")
-        return;
+    if (!emailRef.current || !passwordRef.current || !nameRef.current) {
+      Alert.alert("Sign Up", "Please fill all the fields");
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await signUp(emailRef.current, passwordRef.current, nameRef.current, "");
+    } catch (error: any) {
+      Alert.alert("Register Error", error.message);
+    } finally {
+      setIsLoading(false);
     }
   };
 

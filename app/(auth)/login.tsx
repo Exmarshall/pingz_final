@@ -4,6 +4,7 @@ import Input from "@/components/Input";
 import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import { colors, radius, spacingX, spacingY } from "@/constants/theme";
+import { useAuth } from "@/context/authContext";
 import { useRouter } from "expo-router";
 import * as Icons from "lucide-react-native";
 import React, { useRef, useState } from "react";
@@ -24,11 +25,22 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
+const {signIn}= useAuth();
+
   const handleSubmit = async () => {
     if (!emailRef.current || !passwordRef.current ) {
       Alert.alert("Log In", "Please fill all the fields");
       return;
     }
+
+    try {
+          setIsLoading(true);
+          await signIn(emailRef.current, passwordRef.current);
+        } catch (error: any) {
+          Alert.alert("Login Error", error.message);
+        } finally {
+          setIsLoading(false);
+        }
   };
 
   return (
