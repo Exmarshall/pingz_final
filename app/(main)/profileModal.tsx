@@ -7,14 +7,13 @@ import ScreenWrapper from "@/components/ScreenWrapper";
 import Typo from "@/components/Typo";
 import { colors, spacingX, spacingY } from "@/constants/theme";
 import { useAuth } from "@/context/authContext";
-import { listenUpdateProfile, emitUpdateProfile } from "@/socket/socketEvents";
+import { emitUpdateProfile, listenUpdateProfile } from "@/socket/socketEvents";
 import { UserDataProps } from "@/types";
 import { scale, verticalScale } from "@/utils/styling";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import * as Icons from "phosphor-react-native";
 import React, { useEffect, useState } from "react";
-import * as ImagePicker from "expo-image-picker";
-
 import {
   Alert,
   Platform,
@@ -23,10 +22,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { uploadFileToCloudinary } from "@/services/imageService";
+
+// ✅ Toast
+import Toast from "react-native-toast-message";
 
 const ProfileModal = () => {
   const { user, signOut, updateToken } = useAuth();
-  const [loading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
   const [userData, setUserData] = useState<UserDataProps>({
@@ -43,20 +46,16 @@ const ProfileModal = () => {
     });
   }, [user]);
 
-  const onPickImage = async () =>{
-    let result = await ImagePicker.launchImageLibraryAsync({
+  const onPickImage = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ["images"],
-      // allowsEditing: true,
-      aspect: [4, 3],
       quality: 0.5,
     });
 
-    console.log(result);
-
     if (!result.canceled) {
-      setUserData({...userData,avatar: result.assets[0]});
+      setUserData({ ...userData, avatar: result.assets[0] });
     }
-  }
+  };
 
   useEffect(() => {
     listenUpdateProfile(processUpdateProfile);
@@ -64,14 +63,25 @@ const ProfileModal = () => {
   }, []);
 
   const processUpdateProfile = (res: any) => {
-    setIsLoading(false);
-    console.log("updateProfile response:", res);
+    setLoading(false);
 
     if (res.success) {
       updateToken(res.token);
+
+      // ✅ Success Toast
+      Toast.show({
+        type: "success",
+        text1: "Profile Updated ✅",
+        text2: "Your changes have been saved successfully.",
+      });
+
       router.back();
     } else {
-      Alert.alert("Profile", res.msg);
+      Toast.show({
+        type: "error",
+        text1: "Update Failed",
+        text2: res.msg || "Something went wrong.",
+      });
     }
   };
 
@@ -87,21 +97,45 @@ const ProfileModal = () => {
     ]);
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (!userData.name.trim()) {
-      Alert.alert("User", "Please enter your name");
+      Toast.show({
+        type: "info",
+        text1: "Name Required",
+        text2: "Please enter your name.",
+      });
       return;
     }
 
-    setIsLoading(true);
+    setLoading(true);
+
+    let avatar = userData.avatar;
+
+    // ✅ Upload to Cloudinary if new image selected
+    if (avatar && avatar?.uri) {
+      const res = await uploadFileToCloudinary(avatar, "profiles");
+      if (res.success) {
+        avatar = res.data;
+      } else {
+        setLoading(false);
+        Toast.show({
+          type: "error",
+          text1: "Upload Failed",
+          text2: res.msg,
+        });
+        return;
+      }
+    }
+
+    // ✅ Emit final profile update to backend
     emitUpdateProfile({
-      name: userData.name,
-      avatar: userData.avatar,
+      name: userData.name.trim(),
+      avatar,
     });
   };
 
   return (
-    <ScreenWrapper isModal={true}>
+    <ScreenWrapper isModal>
       <View style={styles.container}>
         <Header
           title="Update Profile"

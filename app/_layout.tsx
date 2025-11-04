@@ -2,11 +2,14 @@ import { AuthProvider } from "@/context/authContext";
 import { Stack } from "expo-router";
 import React from "react";
 import { StyleSheet } from "react-native";
+import Toast from "react-native-toast-message";
 
 const RootLayout = () => {
   return (
     <AuthProvider>
       <StackLayout />
+      {/* ✅ Toast must be mounted here */}
+      <Toast />
     </AuthProvider>
   );
 };
